@@ -1,0 +1,58 @@
+{
+  "late_blight": {
+    "name": "Late Blight",
+    "chemicals": ["Ridomil Gold MZ", "Acrobat MZ", "Dithane M-45"],
+    "application": "Spray every 7-10 days during wet season",
+    "dosage": "50g per 20L water",
+    "safety": "Wear protective gear. PHI: 14 days",
+    "description": "Most devastating potato disease. Acts fast in cold, humid conditions."
+  },
+  "early_blight": {
+    "name": "Early Blight",
+    "chemicals": ["Mancozeb", "Dithane M-45", "Copper oxychloride"],
+    "application": "Apply at first sign of disease",
+    "dosage": "40g per 20L water",
+    "safety": "Avoid during flowering. PHI: 7 days",
+    "description": "Common in mature plants. Shows characteristic concentric rings on leaves."
+  },
+  "bacterial_wilt": {
+    "name": "Bacterial Wilt",
+    "chemicals": ["No chemical cure available"],
+    "application": "Prevention only - use certified disease-free seeds, practice crop rotation, maintain field sanitation",
+    "dosage": "N/A",
+    "safety": "Remove and destroy infected plants immediately to prevent spread",
+    "description": "Soil-borne disease with no cure. Focus on prevention."
+  },
+  "soft_rot": {
+    "name": "Soft Rot",
+    "chemicals": ["Improve storage conditions"],
+    "application": "Reduce moisture, improve ventilation, sort and remove infected tubers",
+    "dosage": "N/A",
+    "safety": "Handle tubers carefully to avoid wounds that allow bacterial entry",
+    "description": "Post-harvest bacterial disease. Proper storage is key."
+  },
+  "brown_rot": {
+    "name": "Brown Rot",
+    "chemicals": ["Copper-based bactericides (preventive only)"],
+    "application": "Soil treatment before planting, use disease-free seeds",
+    "dosage": "Follow manufacturer instructions",
+    "safety": "Cannot cure infected plants. Focus on prevention and sanitation.",
+    "description": "Bacterial disease similar to bacterial wilt. Prevention is critical."
+  },
+  "healthy_leaf": {
+    "name": "Healthy Leaf",
+    "chemicals": ["No treatment needed"],
+    "application": "Continue regular monitoring and good agricultural practices",
+    "dosage": "N/A",
+    "safety": "Maintain crop health through proper nutrition and water management",
+    "description": "Your potato leaves are healthy! Keep up the good work."
+  },
+  "healthy_tuber": {
+    "name": "Healthy Tuber",
+    "chemicals": ["No treatment needed"],
+    "application": "Maintain proper storage conditions: cool (7-10°C), dark, well-ventilated",
+    "dosage": "N/A",
+    "safety": "Handle carefully to avoid bruising",
+    "description": "Your potato tubers are healthy and ready for storage or market."
+  }
+}
