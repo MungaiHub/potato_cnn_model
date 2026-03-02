@@ -1,0 +1,32 @@
+CREATE TABLE users (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(255) UNIQUE NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  role VARCHAR(50) DEFAULT 'user' NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE agrovets (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(255) NOT NULL,
+  phone VARCHAR(20),
+  latitude DECIMAL(10, 8) NOT NULL,
+  longitude DECIMAL(11, 8) NOT NULL,
+  ward VARCHAR(100) NOT NULL,
+  constituency VARCHAR(100) NOT NULL,
+  address TEXT,
+  verified BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE detection_history (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  image_path VARCHAR(500) NOT NULL,
+  predicted_disease VARCHAR(100) NOT NULL,
+  confidence DECIMAL(5, 2) NOT NULL,
+  detection_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  image_type ENUM('leaf', 'tuber') NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
