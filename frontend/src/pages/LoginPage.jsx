@@ -34,8 +34,11 @@ export default function LoginPage() {
       toast.dismiss(toastId);
       toast.success("Welcome back to Potato Guard!");
       navigate("/dashboard");
-    } catch {
+    } catch (error) {
       toast.dismiss(toastId);
+      const errorMessage = error.response?.data?.detail || error.message || "An error occurred";
+      toast.error(errorMessage);
+      console.error("Login error:", error);
     } finally {
       setLoading(false);
     }

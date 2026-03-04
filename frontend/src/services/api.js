@@ -28,8 +28,16 @@ api.interceptors.response.use(
       window.location.href = "/login";
     } else if (error.response?.status === 403) {
       toast.error("You do not have permission.");
+    } else if (error.response?.status === 422) {
+      const details = error.response?.data?.detail;
+      const message = Array.isArray(details) 
+        ? details.map(d => d.msg).join(", ")
+        : details || "Validation error";
+      toast.error(message);
     } else {
-      toast.error(error.response?.data?.detail || "An error occurred");
+      const message = error.response?.data?.detail || error.message || "An error occurred";
+      toast.error(message);
+      console.error("API Error:", error);
     }
     return Promise.reject(error);
   },
