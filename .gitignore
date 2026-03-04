@@ -40,3 +40,12 @@ ml_model/potato_cnn_model.keras
 
 # Uploaded files
 uploads/
+
+# Backend artifacts
+backend/__pycache__/
+backend/ml_model/__pycache__/
+backend/ml_model/potato_cnn_model.keras
+backend/ml_model/class_indices.json
+
+# Node lock file at repository root
+/package-lock.json
