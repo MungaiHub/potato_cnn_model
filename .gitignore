@@ -22,3 +22,21 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+
+# Environment files
+.env
+
+# Virtual environments
+.myvenv/
+venv/
+
+# ML model/output directories
+ml_model/__pycache__/
+ml_model/potato_cnn_model.keras
+
+# Uploaded files
+uploads/
