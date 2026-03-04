@@ -13,11 +13,10 @@ from sqlalchemy.orm import Session
 
 from . import models, schemas
 from .database import get_db
+from .key import SECRET_KEY
 
 
 load_dotenv()
-
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "CHANGE_ME_SUPER_SECRET")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "24"))
 

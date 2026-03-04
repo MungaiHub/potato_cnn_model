@@ -36,12 +36,12 @@ class Agrovet(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
-    phone = Column(String(20))
+    phone = Column(String(20), nullable=True)
     latitude = Column(DECIMAL(10, 8), nullable=False)
     longitude = Column(DECIMAL(11, 8), nullable=False)
     ward = Column(String(100), nullable=False)
     constituency = Column(String(100), nullable=False)
-    address = Column(Text)
+    town = Column(String(100), nullable=False)
     verified = Column(Boolean, default=True)
 
 

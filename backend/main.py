@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import os
 import shutil
 import uuid
@@ -7,6 +8,9 @@ from datetime import timedelta, datetime
 from math import radians, cos, sin, asin, sqrt
 from pathlib import Path
 from typing import List
+
+# Add project root to Python path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from dotenv import load_dotenv
 from fastapi import (
@@ -21,9 +25,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from . import auth, crud, models, schemas
-from .database import Base, engine, get_db
-from .ml_model.predictor import predict_disease
+from backend import auth, crud, models, schemas
+from backend.database import Base, engine, get_db
+from backend.ml_model.predictor import predict_disease
 
 
 load_dotenv()
@@ -135,7 +139,8 @@ async def predict_endpoint(
         image_type=result["image_type"],
     )
 
-    disease_key = result["disease"].lower().replace(" ", "_")
+    # Use the normalized key from predictor to look up chemicals
+    disease_key = result.get("normalized_disease_key", result["disease"].lower().replace(" ", "_"))
     chemical_recommendations = chemicals_data.get(disease_key)
 
     return {

@@ -4,15 +4,24 @@ import os
 from typing import Generator
 
 from dotenv import load_dotenv
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 
 
-load_dotenv()
+# load environment variables from a .env file if present
+# keep secrets out of version control: .env is ignored, .env.example is optional
+dotenv_path = Path(__file__).parent.parent / ".env"
+if dotenv_path.exists():
+    load_dotenv(dotenv_path=dotenv_path)
+else:
+    # fall back to environment variables already set in the shell
+    load_dotenv()  # this will load .env if present anywhere in env
 
 
+# Database configuration with defaults
 MYSQL_USER = os.getenv("MYSQL_USER", "root")
-MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
+MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "amos")
 MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
 MYSQL_PORT = os.getenv("MYSQL_PORT", "3306")
 MYSQL_DB = os.getenv("MYSQL_DB", "potato_guard")
