@@ -14,8 +14,8 @@ export default function AgrovetCard({ agrovet }) {
         <p className="mt-1 text-xs text-slate-500">
           Distance: <span className="font-semibold">{agrovet.distance} km</span>
         </p>
-        {agrovet.address && (
-          <p className="mt-1 text-xs text-slate-500">{agrovet.address}</p>
+        {agrovet.town && (
+          <p className="mt-1 text-xs text-slate-500">{agrovet.town}</p>
         )}
       </div>
       <div className="mt-3 flex items-center justify-between">
