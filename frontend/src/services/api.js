@@ -34,6 +34,15 @@ api.interceptors.response.use(
         ? details.map(d => d.msg).join(", ")
         : details || "Validation error";
       toast.error(message);
+    } else if (error.response?.status === 400) {
+      // some 400 errors (in particular our outside-county response) include an
+      // object with `message` + extra data; the caller component is responsible for
+      // displaying it, so we avoid spamming a generic toast here.
+      const detail = error.response?.data?.detail;
+      if (!detail || typeof detail === "string" || !detail.message) {
+        const message = detail || "Bad request";
+        toast.error(message);
+      }
     } else {
       const message = error.response?.data?.detail || error.message || "An error occurred";
       toast.error(message);
