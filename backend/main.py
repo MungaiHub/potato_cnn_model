@@ -7,7 +7,7 @@ import uuid
 from datetime import timedelta, datetime
 from math import radians, cos, sin, asin, sqrt
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 # Add project root to Python path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -23,6 +23,7 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from backend import auth, crud, models, schemas
@@ -50,6 +51,8 @@ app.add_middleware(
 
 UPLOADS_DIR = Path(__file__).resolve().parent / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 
 async def save_upload_file(upload_file: UploadFile) -> str:
@@ -133,7 +136,9 @@ async def predict_endpoint(
     detection = crud.create_detection_history(
         db=db,
         user_id=current_user.id,
-        image_path=file_path,
+        # store only the filename in the database; the actual files are served from
+        # `/uploads` via StaticFiles so the frontend can build a public URL.
+        image_path=os.path.basename(file_path),
         predicted_disease=result["disease"],
         confidence=result["confidence"],
         image_type=result["image_type"],
@@ -184,17 +189,116 @@ def delete_history_item(
     return
 
 
+
+# approximate bounding box for Nyandarua county; modify as needed
+NYANDARUA_LAT_MIN = -0.8
+NYANDARUA_LAT_MAX = 0.0
+NYANDARUA_LON_MIN = 35.5
+NYANDARUA_LON_MAX = 36.8
+
+
+def is_inside_nyandarua(lat: float, lon: float) -> bool:
+    """Return True if the given co‑ordinates fall within Nyandarua's rough boundary.
+
+    We use a simple latitude/longitude box because that's sufficient for this demo;
+    a real application would probably use a proper polygon and a spatial index.
+    """
+    return (
+        NYANDARUA_LAT_MIN <= lat <= NYANDARUA_LAT_MAX
+        and NYANDARUA_LON_MIN <= lon <= NYANDARUA_LON_MAX
+    )
+
+
+@app.get("/api/agrovets/locations", response_model=schemas.AgrovetLocationList)
+def get_agrovet_locations(
+    constituency: Optional[str] = None, db: Session = Depends(get_db)
+):
+    """Return the distinct constituency/ward combinations stored.
+
+    When called without a constituency the response contains:
+      * all constituencies
+      * all wards
+      * a `wards_by_constituency` map of the available wards grouped by
+        constituency
+
+    When a `constituency` query param is provided, the `wards` list is limited to
+    that constituency and the map is omitted (since the client already knows the
+    context).
+    """
+    # always supply the full list of constituencies for the dropdown
+    constituencies = [row[0] for row in db.query(models.Agrovet.constituency).distinct().all()]
+
+    if constituency:
+        wards = [row[0] for row in db.query(models.Agrovet.ward)
+                 .filter(models.Agrovet.constituency == constituency)
+                 .distinct()
+                 .all()]
+        return schemas.AgrovetLocationList(constituencies=constituencies, wards=wards)
+
+    # build map of constituency -> wards
+    pairs = db.query(models.Agrovet.constituency, models.Agrovet.ward).distinct().all()
+    wards_map: dict[str, List[str]] = {}
+    for cons, ward in pairs:
+        wards_map.setdefault(cons, []).append(ward)
+
+    wards = [row[0] for row in db.query(models.Agrovet.ward).distinct().all()]
+    return schemas.AgrovetLocationList(
+        constituencies=constituencies, wards=wards, wards_by_constituency=wards_map
+    )
+
+
 @app.get("/api/agrovets/nearest", response_model=List[schemas.AgrovetNearest])
 def get_nearest_agrovets(
     latitude: float,
     longitude: float,
+    constituency: Optional[str] = None,
+    ward: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    agrovets = db.query(models.Agrovet).all()
+    """Return the three nearest agrovets.
+
+    Behaviour changes when the supplied co‑ordinates are outside Nyandarua:
+    * if no `ward`/`constituency` have been provided we return a 400 response with a
+      message plus the lists of valid wards/constituencies so the client can show a
+      form.
+    * once the client has submitted a ward/constituency we filter by those values and
+      compute the nearest vendors within that area (using the original GPS coords for
+      distance calculations).
+    """
+
+    # if user is outside the county and hasn't given themself a ward/constituency,
+    # we ask the frontend to prompt them.  a 400 is convenient because the existing
+    # UI already treats it as a failure path, but the JSON payload contains extra
+    # information the client can use.
+    if not is_inside_nyandarua(latitude, longitude) and (not ward or not constituency):
+        constituencies = [row[0] for row in db.query(models.Agrovet.constituency).distinct().all()]
+        wards = [row[0] for row in db.query(models.Agrovet.ward).distinct().all()]
+        # build map of constituency -> wards for frontend filtering
+        pairs = db.query(models.Agrovet.constituency, models.Agrovet.ward).distinct().all()
+        wards_map: dict[str, list[str]] = {}
+        for cons, ward_name in pairs:
+            wards_map.setdefault(cons, []).append(ward_name)
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "It seems you are outside Nyandarua county currently.",
+                "constituencies": constituencies,
+                "wards": wards,
+                "wards_by_constituency": wards_map,
+            },
+        )
+
+    query = db.query(models.Agrovet)
+    if constituency:
+        query = query.filter(models.Agrovet.constituency == constituency)
+    if ward:
+        query = query.filter(models.Agrovet.ward == ward)
+
+    agrovets = query.all()
     if not agrovets:
         return []
 
-    nearest = []
+    nearest: List[schemas.AgrovetNearest] = []
     for agrovet in agrovets:
         distance = calculate_distance(
             latitude,
@@ -211,7 +315,7 @@ def get_nearest_agrovets(
                 longitude=float(agrovet.longitude),
                 ward=agrovet.ward,
                 constituency=agrovet.constituency,
-                address=agrovet.address,
+                town=agrovet.town,
                 verified=agrovet.verified,
                 distance=distance,
             )
