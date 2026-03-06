@@ -15,7 +15,7 @@ CREATE TABLE agrovets (
   longitude DECIMAL(11, 8) NOT NULL,
   ward VARCHAR(100) NOT NULL,
   constituency VARCHAR(100) NOT NULL,
-  address TEXT,
+  town VARCHAR(100) NOT NULL,
   verified BOOLEAN DEFAULT TRUE
 );
 

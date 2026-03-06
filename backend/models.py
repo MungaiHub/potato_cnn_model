@@ -41,6 +41,8 @@ class Agrovet(Base):
     longitude = Column(DECIMAL(11, 8), nullable=False)
     ward = Column(String(100), nullable=False)
     constituency = Column(String(100), nullable=False)
+    # this column is present in the existing database (see `inspect` output)
+    # and should not be renamed unless you also alter/migrate the schema.
     town = Column(String(100), nullable=False)
     verified = Column(Boolean, default=True)
 

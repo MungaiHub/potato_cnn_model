@@ -65,7 +65,7 @@ class AgrovetBase(BaseModel):
     longitude: float
     ward: str
     constituency: str
-    address: Optional[str] = None
+    town: Optional[str] = None
     verified: bool
 
     class Config:
@@ -74,6 +74,18 @@ class AgrovetBase(BaseModel):
 
 class AgrovetNearest(AgrovetBase):
     distance: float
+
+
+class AgrovetLocationList(BaseModel):
+    """Utility type for returning dropdown options when user is outside Nyandarua.
+
+    The `wards_by_constituency` map makes it easy for the frontend to only show
+    wards that belong to the currently selected constituency.
+    """
+
+    constituencies: List[str]
+    wards: List[str]
+    wards_by_constituency: dict[str, List[str]] | None = None
 
 
 class ChemicalRecommendation(BaseModel):
