@@ -4,6 +4,16 @@ import toast from "react-hot-toast";
 import api from "../services/api.js";
 import LoadingSpinner from "./LoadingSpinner.jsx";
 
+const API_BASE_URL = "http://localhost:8000";
+
+const buildImageUrl = (path) => {
+  if (!path) return "";
+  if (path.startsWith("http")) return path;
+  if (path.startsWith("/uploads")) return `${API_BASE_URL}${path}`;
+  const filename = path.split("/").pop();
+  return `${API_BASE_URL}/uploads/${filename}`;
+};
+
 export default function HistoryTable() {
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);
@@ -80,11 +90,11 @@ export default function HistoryTable() {
               <tr key={item.id}>
                 <td className="px-4 py-3">
                   <button
-                    onClick={() => setPreview(item.image_path)}
+                    onClick={() => setPreview(buildImageUrl(item.image_path))}
                     className="group relative inline-block"
                   >
                     <img
-                      src={item.image_path}
+                      src={buildImageUrl(item.image_path)}
                       alt={item.predicted_disease}
                       className="h-14 w-20 rounded-lg object-cover"
                     />
@@ -100,7 +110,7 @@ export default function HistoryTable() {
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-2">
                     <button
-                      onClick={() => setPreview(item.image_path)}
+                      onClick={() => setPreview(buildImageUrl(item.image_path))}
                       className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-[11px] text-slate-700 hover:bg-slate-50"
                     >
                       <Eye className="h-3 w-3" />
@@ -127,9 +137,9 @@ export default function HistoryTable() {
             key={item.id}
             className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
           >
-            <button onClick={() => setPreview(item.image_path)}>
+            <button onClick={() => setPreview(buildImageUrl(item.image_path))}>
               <img
-                src={item.image_path}
+                src={buildImageUrl(item.image_path)}
                 alt={item.predicted_disease}
                 className="h-20 w-24 rounded-lg object-cover"
               />
