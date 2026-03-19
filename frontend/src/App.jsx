@@ -16,8 +16,8 @@ import AboutPage from "./pages/AboutPage.jsx";
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
+    <Router>
+      <AuthProvider>
         <div className="flex min-h-screen flex-col bg-slate-50">
           <Navbar />
           <main className="flex-1">
@@ -49,8 +49,8 @@ function App() {
           <Footer />
         </div>
         <Toaster position="top-right" />
-      </Router>
-    </AuthProvider>
+      </AuthProvider>
+    </Router>
   );
 }
 
