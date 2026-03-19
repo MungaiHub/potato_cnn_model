@@ -4,7 +4,11 @@ import toast from "react-hot-toast";
 import api from "../services/api.js";
 import LoadingSpinner from "./LoadingSpinner.jsx";
 
-const API_BASE_URL = "http://localhost:8000";
+const RAW_API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+
+// derive base origin (without trailing /api) for serving uploaded images
+const API_BASE_URL = RAW_API_BASE.replace(/\/api\/?$/, "");
 
 const buildImageUrl = (path) => {
   if (!path) return "";
