@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { MapPin } from "lucide-react";
 import ImageUpload from "../components/ImageUpload.jsx";
@@ -7,13 +7,27 @@ import AgrovetCard from "../components/AgrovetCard.jsx";
 import api from "../services/api.js";
 
 export default function DashboardPage() {
+    // Toggle GPS on/off
+    const toggleGps = () => {
+      if (gpsEnabled) {
+        stopGps();
+      } else {
+        startGps();
+        setGpsEnabled(true);
+      }
+    };
   const [result, setResult] = useState(null);
   const [agrovets, setAgrovets] = useState([]);
   const [loadingAgrovets, setLoadingAgrovets] = useState(false);
   const [lastCoords, setLastCoords] = useState(null);
+  const [gpsEnabled, setGpsEnabled] = useState(false);
+
+  const watchIdRef = useRef(null);
+  const fetchDebounceRef = useRef(null);
 
   // state used when the user is outside Nyandarua and we need a ward/constituency
   const [outsideMessage, setOutsideMessage] = useState(null);
+  const [isOutsideNyandarua, setIsOutsideNyandarua] = useState(false);
   const [constituencies, setConstituencies] = useState([]);
   const [wards, setWards] = useState([]);
   const [wardsByConstituency, setWardsByConstituency] = useState({});
@@ -71,21 +85,36 @@ export default function DashboardPage() {
     }
   };
 
-  const getUserLocation = () => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setLastCoords({ latitude, longitude });
-          fetchNearestAgrovets(latitude, longitude);
-        },
-        () => {
-          toast.error("Unable to get your location. Please enable GPS.");
-        },
-      );
-    } else {
-      toast.error("Geolocation not supported by your browser.");
+  const stopGps = () => {
+    if (watchIdRef.current !== null && "geolocation" in navigator) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
     }
+    if (fetchDebounceRef.current) {
+      clearTimeout(fetchDebounceRef.current);
+      fetchDebounceRef.current = null;
+    }
+    setGpsEnabled(false);
+  };
+
+  const startGps = () => {
+    if (!("geolocation" in navigator)) {
+      toast.error("Geolocation not supported by your browser.");
+      return;
+    }
+
+    // Get an immediate fix, then keep tracking.
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setLastCoords({ latitude, longitude });
+        fetchNearestAgrovets(latitude, longitude);
+      },
+      () => {
+        toast.error("Unable to get your location. Please enable GPS permission.");
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
+    )
   };
 
   return (
@@ -101,19 +130,30 @@ export default function DashboardPage() {
               agrovets.
             </p>
           </div>
-          <button
-            onClick={getUserLocation}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-          >
-            <MapPin className="h-4 w-4 text-primary" />
-            Find nearest agrovets
-          </button>
+          <div className="flex flex-col items-end gap-2">
+            <button
+              onClick={toggleGps}
+              className={
+                gpsEnabled
+                  ? "inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-dark"
+                  : "inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+              }
+            >
+              <MapPin className="h-4 w-4" />
+              {gpsEnabled ? "GPS on" : "Turn on GPS"}
+            </button>
+            {lastCoords && (
+              <p className="text-[11px] text-slate-500">
+                Lat {lastCoords.latitude.toFixed(4)}, Lon {lastCoords.longitude.toFixed(4)}
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)]">
           <div>
             <ImageUpload onResult={setResult} />
-            <ResultCard result={result} onFindAgrovets={getUserLocation} />
+            <ResultCard result={result} onFindAgrovets={startGps} />
           </div>
 
           <div className="space-y-3">
@@ -135,17 +175,16 @@ export default function DashboardPage() {
                     onChange={(e) => {
                       const cons = e.target.value;
                       setSelectedConstituency(cons);
-                      // when the constituency changes, update the wards list
                       if (wardsByConstituency && wardsByConstituency[cons]) {
                         setWards(wardsByConstituency[cons]);
                       } else {
-                        // clear if no map or no wards for selection
                         setWards([]);
                       }
-                      // reset previously chosen ward
                       setSelectedWard("");
                     }}
                     className="rounded border p-2 text-xs"
+                    // enabled when outside Nyandarua
+                    disabled={false}
                   >
                     <option value="">Select constituency</option>
                     {constituencies.map((c) => (
@@ -158,6 +197,7 @@ export default function DashboardPage() {
                   <select
                     value={selectedWard}
                     onChange={(e) => setSelectedWard(e.target.value)}
+                    // enabled when outside Nyandarua
                     disabled={!wards.length}
                     className="rounded border p-2 text-xs disabled:opacity-50"
                   >
@@ -170,6 +210,7 @@ export default function DashboardPage() {
                   </select>
 
                   <button
+                    // enabled when outside Nyandarua
                     disabled={!selectedWard || !selectedConstituency || !lastCoords}
                     onClick={() => {
                       if (lastCoords) {
