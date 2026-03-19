@@ -7,7 +7,7 @@ export default function Footer() {
           County, Kenya.
         </p>
         <p className="flex gap-4">
-          <span>AI-powered potato disease detection</span>
+          <span>Potato plant disease detection and advisory system</span>
         </p>
       </div>
     </footer>
