@@ -24,8 +24,16 @@ export default function SignupPage() {
       toast.dismiss(toastId);
       toast.success("Account created! You can now login.");
       navigate("/login");
-    } catch {
+    } catch (error) {
       toast.dismiss(toastId);
+      const detail = error?.response?.data?.detail;
+      if (detail === "Email already registered") {
+        toast.error("This email is already in use.");
+      } else if (detail === "Username already registered") {
+        toast.error("This username is already in use.");
+      } else {
+        toast.error("Signup failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
