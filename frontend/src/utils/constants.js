@@ -1,7 +1,19 @@
 export const STATS = {
-  farmersServed: "130,000+",
-  accuracy: "95%+",
-  diseases: 7,
+  farmersServed: {
+    target: 130000,
+    suffix: "+",
+    useThousandsSeparator: true,
+  },
+  accuracy: {
+    target: 95,
+    suffix: "%+",
+    useThousandsSeparator: false,
+  },
+  diseases: {
+    target: 7,
+    suffix: "",
+    useThousandsSeparator: false,
+  },
 };
 
 export const DISEASES = [
