@@ -1,37 +1,41 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import api from "../services/api.js";
 
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // On mount, check for token and set user if present
+  const location = useLocation();
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) {
+    const userData = localStorage.getItem("user");
+    if (token && userData) {
+      setUser(JSON.parse(userData));
       setLoading(false);
-      return;
+    } else {
+      localStorage.removeItem("user");
+      setUser(null);
+      setLoading(false);
+      if (window.location.pathname !== "/login" && window.location.pathname !== "/signup") {
+        window.location.replace("/login");
+      }
     }
-
-    api
-      .get("/auth/me")
-      .then((res) => {
-        setUser(res.data);
-      })
-      .catch(() => {
-        localStorage.removeItem("token");
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  }, [location.pathname]);
 
   const login = (token, userData) => {
     localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(userData));
     setUser(userData);
   };
 
   const logout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
   };
 
