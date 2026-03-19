@@ -1,0 +1,57 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: potato_guard_db
+    environment:
+      MYSQL_ROOT_PASSWORD: "amos"
+      MYSQL_DATABASE: "potato_guard"
+      MYSQL_ROOT_HOST: "%"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pamos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "3306:3306"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: potato_guard_backend
+    environment:
+      MYSQL_USER: "root"
+      MYSQL_PASSWORD: "amos"
+      MYSQL_HOST: "db"
+      MYSQL_PORT: "3306"
+      MYSQL_DB: "potato_guard"
+      JWT_EXPIRE_HOURS: "24"
+      PRED_CONF_THRESHOLD: "60"
+      JWT_SECRET_KEY: "change-me-in-production"
+    volumes:
+      - ./backend/ml_model:/app/backend/ml_model
+      - ./backend/data:/app/backend/data
+      - ./nyandarua_agrovets.csv:/seed/nyandarua_agrovets.csv:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: "http://localhost:8000/api"
+    container_name: potato_guard_frontend
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  db_data:
+    driver: local
