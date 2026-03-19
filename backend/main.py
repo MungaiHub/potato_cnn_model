@@ -4,7 +4,6 @@ import sys
 import os
 import shutil
 import uuid
-import csv
 from datetime import timedelta, datetime
 from math import radians, cos, sin, asin, sqrt
 from pathlib import Path
@@ -28,7 +27,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from backend import auth, crud, models, schemas
-from backend.database import Base, SessionLocal, engine, get_db
+from backend.database import Base, engine, get_db
 from backend.ml_model.predictor import predict_disease
 
 
@@ -91,54 +90,6 @@ def load_chemicals() -> dict:
 
 
 chemicals_data = load_chemicals()
-
-
-def _str_to_bool(value: str) -> bool:
-    return str(value).strip().lower() in {"1", "true", "yes", "y"}
-
-
-def seed_agrovets_if_missing() -> None:
-    """Seed agrovets from CSV when table is empty."""
-    candidate_paths = [
-        Path("/seed/nyandarua_agrovets.csv"),
-        Path(__file__).resolve().parent / "data" / "nyandarua_agrovets.csv",
-    ]
-    csv_path = next((p for p in candidate_paths if p.exists()), None)
-    if not csv_path:
-        return
-
-    db = SessionLocal()
-    try:
-        has_records = db.query(models.Agrovet.id).first() is not None
-        if has_records:
-            return
-
-        with csv_path.open("r", newline="", encoding="utf-8") as csvfile:
-            reader = csv.DictReader(csvfile)
-            rows: list[models.Agrovet] = []
-            for row in reader:
-                rows.append(
-                    models.Agrovet(
-                        id=int(row["id"]),
-                        name=row["name"],
-                        phone=row.get("phone"),
-                        latitude=float(row["latitude"]),
-                        longitude=float(row["longitude"]),
-                        ward=row["ward"],
-                        constituency=row["constituency"],
-                        town=row["town"],
-                        verified=_str_to_bool(row.get("verified", "true")),
-                    )
-                )
-
-        if rows:
-            db.add_all(rows)
-            db.commit()
-    finally:
-        db.close()
-
-
-seed_agrovets_if_missing()
 
 
 @app.post("/api/auth/signup", response_model=schemas.UserOut, status_code=status.HTTP_201_CREATED)

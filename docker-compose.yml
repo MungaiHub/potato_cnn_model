@@ -33,7 +33,6 @@ services:
     volumes:
       - ./backend/ml_model:/app/backend/ml_model
       - ./backend/data:/app/backend/data
-      - ./nyandarua_agrovets.csv:/seed/nyandarua_agrovets.csv:ro
     depends_on:
       db:
         condition: service_healthy
