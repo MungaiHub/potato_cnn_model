@@ -1,0 +1,11 @@
+__pycache__
+*.pyc
+venv/
+.venv/
+.myvenv/
+.env
+.git
+uploads/
+ml_model/
+data/
+
