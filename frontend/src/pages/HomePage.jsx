@@ -1,15 +1,61 @@
 import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import { Leaf, Package, Zap } from "lucide-react";
 import { STATS } from "../utils/constants.js";
 
 export default function HomePage() {
+  const statConfig = useMemo(
+    () => [
+      { key: "farmersServed", label: "Farmers protected" },
+      { key: "accuracy", label: "Model accuracy" },
+      { key: "diseases", label: "Diseases detected" },
+    ],
+    []
+  );
+
+  const [displayStats, setDisplayStats] = useState(() => ({
+    farmersServed: 0,
+    accuracy: 0,
+    diseases: 0,
+  }));
+
+  useEffect(() => {
+    const durationMs = 1200;
+    const stepMs = 25;
+    const steps = Math.floor(durationMs / stepMs);
+    let step = 0;
+
+    const timer = setInterval(() => {
+      step += 1;
+      const progress = Math.min(step / steps, 1);
+
+      setDisplayStats({
+        farmersServed: Math.floor(STATS.farmersServed.target * progress),
+        accuracy: Math.floor(STATS.accuracy.target * progress),
+        diseases: Math.floor(STATS.diseases.target * progress),
+      });
+
+      if (progress >= 1) {
+        clearInterval(timer);
+      }
+    }, stepMs);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatStatValue = (key, value) => {
+    const config = STATS[key];
+    const base = config.useThousandsSeparator ? value.toLocaleString() : String(value);
+    return `${base}${config.suffix}`;
+  };
+
   return (
     <div className="bg-gradient-to-b from-emerald-50/70 via-slate-50 to-white">
       <section className="mx-auto flex max-w-6xl flex-col gap-10 px-4 pb-16 pt-10 sm:px-6 lg:flex-row lg:items-center lg:gap-16 lg:pt-14">
         <div className="max-w-xl space-y-6">
           <p className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-800">
             <Zap className="h-3 w-3" />
-            AI-Powered Potato Disease Detection
+            Potato disease detection and advisory system
           </p>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
             Protect your Nyandarua potatoes with instant, accurate diagnosis.
@@ -34,24 +80,14 @@ export default function HomePage() {
             </Link>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-3 rounded-2xl bg-white/80 p-4 shadow-sm">
-            <div>
-              <p className="text-xs text-slate-500">Farmers protected</p>
-              <p className="text-lg font-semibold text-slate-900">
-                {STATS.farmersServed}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Model accuracy</p>
-              <p className="text-lg font-semibold text-slate-900">
-                {STATS.accuracy}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Diseases detected</p>
-              <p className="text-lg font-semibold text-slate-900">
-                {STATS.diseases}
-              </p>
-            </div>
+            {statConfig.map((stat) => (
+              <div key={stat.key}>
+                <p className="text-xs text-slate-500">{stat.label}</p>
+                <p className="text-lg font-semibold text-slate-900">
+                  {formatStatValue(stat.key, displayStats[stat.key])}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
 
