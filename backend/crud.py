@@ -6,6 +6,7 @@ from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from . import models
+
 from .auth import get_password_hash, verify_password
 
 
@@ -16,6 +17,10 @@ def create_user(db: Session, username: str, email: str, password: str) -> models
     db.commit()
     db.refresh(user)
     return user
+
+
+def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
+    return db.query(models.User).filter(models.User.email == email).first()
 
 
 def get_user_by_username(db: Session, username: str) -> Optional[models.User]:
