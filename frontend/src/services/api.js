@@ -1,8 +1,11 @@
 import axios from "axios";
 import toast from "react-hot-toast";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+
 const api = axios.create({
-  baseURL: "http://localhost:8000/api",
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -25,6 +28,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       toast.error("Session expired. Please login again.");
       localStorage.removeItem("token");
+      localStorage.removeItem("user");
       window.location.href = "/login";
     } else if (error.response?.status === 403) {
       toast.error("You do not have permission.");
