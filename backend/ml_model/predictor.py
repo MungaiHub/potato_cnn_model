@@ -19,6 +19,8 @@ model = None
 
 # confidence threshold (%) below which predictions are considered "unidentified"
 CONFIDENCE_THRESHOLD = float(os.getenv("PRED_CONF_THRESHOLD", "60"))
+# If an image looks unlike a potato leaf/tuber, cap confidence below this value.
+NON_POTATO_CONFIDENCE_CAP = float(os.getenv("NON_POTATO_CONF_CAP", "49"))
 
 
 def load_model():
@@ -96,6 +98,17 @@ def predict_disease(image_path: str) -> Dict[str, Any]:
 
     disease_name = class_indices.get(str(class_idx), "Unknown")
 
+    # Lightweight "potato-likeness" guard:
+    # faces/random photos can still get high softmax confidence in closed-set models.
+    # We use a simple color-distribution heuristic to reject clearly non-potato images.
+    if _looks_non_potato_image(image_path):
+        return {
+            "disease": "Unidentified image",
+            "confidence": round(min(confidence, NON_POTATO_CONFIDENCE_CAP), 2),
+            "image_type": "unknown",
+            "normalized_disease_key": "unidentified",
+        }
+
     # If the model returned an unknown class or confidence is below threshold,
     # treat as unidentified.
     if disease_name == "Unknown" or confidence < CONFIDENCE_THRESHOLD:
@@ -126,4 +139,29 @@ def predict_disease(image_path: str) -> Dict[str, Any]:
         "image_type": image_type,
         "normalized_disease_key": normalized,
     }
+
+
+def _looks_non_potato_image(image_path: str) -> bool:
+    """Heuristic rejection for obvious non-potato images.
+
+    This is not a replacement for training a non-potato class, but it reduces
+    overconfident false positives (e.g., face photos) in demos.
+    """
+    img = Image.open(image_path).convert("RGB").resize((224, 224))
+    arr = np.array(img).astype(np.float32)
+    r = arr[:, :, 0]
+    g = arr[:, :, 1]
+    b = arr[:, :, 2]
+
+    # Green-ish pixels common in leaf imagery.
+    green_mask = (g > r + 8) & (g > b + 8) & (g > 45)
+    # Brown-ish pixels common in tubers/soil backgrounds.
+    brown_mask = (r > g + 10) & (g > b + 5) & (r > 55) & (b < 130)
+
+    green_ratio = float(np.mean(green_mask))
+    brown_ratio = float(np.mean(brown_mask))
+    potato_like_ratio = green_ratio + brown_ratio
+
+    # Below this, image is likely unrelated to potato leaf/tuber content.
+    return potato_like_ratio < 0.12
 
