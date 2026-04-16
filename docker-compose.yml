@@ -31,8 +31,7 @@ services:
       PRED_CONF_THRESHOLD: "60"
       JWT_SECRET_KEY: "change-me-in-production"
     volumes:
-      - ./backend/ml_model:/app/backend/ml_model
-      - ./backend/data:/app/backend/data
+      - ./backend:/app/backend
     depends_on:
       db:
         condition: service_healthy
@@ -44,7 +43,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: "http://localhost:8000/api"
+        # Use relative URL; nginx proxies /api -> backend.
+        VITE_API_BASE_URL: "/api"
     container_name: potato_guard_frontend
     depends_on:
       - backend

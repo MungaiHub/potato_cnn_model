@@ -55,14 +55,32 @@ export default function ImageUpload({ onResult }) {
 
     try {
       const res = await api.post("/predict", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        // Let the browser/axios set the correct multipart boundary header.
       });
       toast.dismiss(toastId);
       toast.success("Disease detected successfully!");
       onResult(res.data);
     } catch (err) {
       toast.dismiss(toastId);
-      // Error already handled by interceptor
+      // Prefer the backend's own error message when available.
+      const resp = err?.response;
+      if (resp) {
+        const detail = resp.data?.detail;
+        let message = "Failed to analyze image.";
+        if (typeof detail === "string") {
+          message = detail;
+        } else if (detail && typeof detail === "object" && detail.message) {
+          message = detail.message;
+        } else if (err.message) {
+          message = err.message;
+        }
+        toast.error(message);
+      } else {
+        // True network / CORS / server-down case.
+        toast.error(
+          "Network error: unable to reach the server. Please check that the backend is running and try again.",
+        );
+      }
     } finally {
       setLoading(false);
     }

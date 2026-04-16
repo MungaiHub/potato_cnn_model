@@ -25,6 +25,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
+import logging
 
 from backend import auth, crud, models, schemas
 from backend.database import Base, engine, get_db
@@ -36,16 +38,30 @@ load_dotenv()
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Potato Guard API", version="1.0.0")
+logger = logging.getLogger(__name__)
 
 
-origins = [
-    "http://localhost",
-    "http://localhost:5173",
-]
+def _load_cors_origins() -> list[str]:
+    env = os.getenv("CORS_ORIGINS", "").strip()
+    if env:
+        # Comma-separated list, e.g.:
+        # CORS_ORIGINS="http://localhost:5173,http://127.0.0.1:5173"
+        return [o.strip() for o in env.split(",") if o.strip()]
+    # Dev defaults (Vite commonly uses 5173 but can change)
+    return [
+        "http://localhost",
+        "http://localhost:5173",
+        "http://127.0.0.1",
+        "http://127.0.0.1:5173",
+        "http://0.0.0.0:5173",
+    ]
+
+
+origins = _load_cors_origins()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in origins],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -139,18 +155,24 @@ async def predict_endpoint(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction failed: {e}")
 
-    detection = crud.create_detection_history(
-        db=db,
-        user_id=current_user.id,
-        # store only the filename in the database; the actual files are served from
-        # `/uploads` via StaticFiles so the frontend can build a public URL.
-        image_path=os.path.basename(file_path),
-        predicted_disease=result["disease"],
-        confidence=result["confidence"],
-        image_type=result["image_type"],
-    )
-
-    # Use the normalized key from predictor to look up chemicals
+    detection = None
+    if result["image_type"] in {"leaf", "tuber"}:
+        try:
+            detection = crud.create_detection_history(
+                db=db,
+                user_id=current_user.id,
+                image_path=os.path.basename(file_path),
+                predicted_disease=result["disease"],
+                confidence=result["confidence"],
+                image_type=result["image_type"],
+            )
+        except SQLAlchemyError:
+            db.rollback()
+            logger.exception(
+                "Failed to store detection history for user_id=%s image_type=%s",
+                current_user.id,
+                result["image_type"],
+            )
     disease_key = result.get("normalized_disease_key", result["disease"].lower().replace(" ", "_"))
     chemical_recommendations = chemicals_data.get(disease_key)
 
@@ -159,7 +181,7 @@ async def predict_endpoint(
         "confidence": result["confidence"],
         "image_type": result["image_type"],
         "chemical_recommendations": chemical_recommendations,
-        "detection_id": detection.id,
+        "detection_id": detection.id if detection else None,
     }
 
 

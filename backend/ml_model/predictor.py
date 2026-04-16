@@ -98,10 +98,10 @@ def predict_disease(image_path: str) -> Dict[str, Any]:
 
     disease_name = class_indices.get(str(class_idx), "Unknown")
 
-    # Lightweight "potato-likeness" guard:
-    # faces/random photos can still get high softmax confidence in closed-set models.
-    # We use a simple color-distribution heuristic to reject clearly non-potato images.
-    if _looks_non_potato_image(image_path):
+    # Rejection guards (best-effort without retraining):
+    # Closed-set softmax can be overconfident on out-of-domain inputs (faces/body/etc).
+    # These guards force such inputs to "Unidentified image" with capped confidence.
+    if _looks_like_skin(image_path) or _looks_non_potato_image(image_path):
         return {
             "disease": "Unidentified image",
             "confidence": round(min(confidence, NON_POTATO_CONFIDENCE_CAP), 2),
@@ -163,5 +163,35 @@ def _looks_non_potato_image(image_path: str) -> bool:
     potato_like_ratio = green_ratio + brown_ratio
 
     # Below this, image is likely unrelated to potato leaf/tuber content.
-    return potato_like_ratio < 0.12
+    # Using a higher threshold reduces false accepts (faces with green backgrounds).
+    return potato_like_ratio < 0.22
+
+
+def _looks_like_skin(image_path: str) -> bool:
+    """Detect likely skin-tone dominance (faces/body parts).
+
+    Uses a simple YCbCr rule of thumb (not perfect, but effective for demos).
+    """
+    img = Image.open(image_path).convert("RGB").resize((224, 224))
+    arr = np.array(img).astype(np.float32)
+    r = arr[:, :, 0]
+    g = arr[:, :, 1]
+    b = arr[:, :, 2]
+
+    # Convert RGB -> YCbCr (approx; ranges follow ITU-R BT.601)
+    y = 0.299 * r + 0.587 * g + 0.114 * b
+    cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b
+    cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b
+
+    # Common skin cluster (broad) + avoid very dark pixels.
+    skin_mask = (
+        (y > 40)
+        & (cb >= 77)
+        & (cb <= 127)
+        & (cr >= 133)
+        & (cr <= 173)
+    )
+
+    skin_ratio = float(np.mean(skin_mask))
+    return skin_ratio > 0.18
 
