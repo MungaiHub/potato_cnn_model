@@ -6,6 +6,7 @@ export default function ResultCard({ result, onFindAgrovets }) {
 
   const isHealthy =
     result.disease?.toLowerCase().includes("healthy") ?? false;
+  const isUnknownImage = result.image_type === "unknown";
 
   const Icon = isHealthy ? CheckCircle : AlertCircle;
   const badgeColor = isHealthy ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700";
@@ -27,21 +28,29 @@ export default function ResultCard({ result, onFindAgrovets }) {
             <span
               className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${badgeColor}`}
             >
-              {result.image_type === "leaf" ? "Leaf" : "Tuber"} image
+              {result.image_type === "leaf"
+                ? "Leaf"
+                : result.image_type === "tuber"
+                  ? "Tuber"
+                  : "Unknown"} image
             </span>
-            <span className="text-xs text-slate-500">
-              Detection ID: #{result.detection_id}
-            </span>
+            {result.detection_id && (
+              <span className="text-xs text-slate-500">
+                Detection ID: #{result.detection_id}
+              </span>
+            )}
           </div>
         </div>
 
-        <button
-          onClick={onFindAgrovets}
-          className="mt-2 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 sm:mt-0"
-        >
-          <MapPin className="h-4 w-4" />
-          Find nearest agrovets
-        </button>
+        {!isUnknownImage && (
+          <button
+            onClick={onFindAgrovets}
+            className="mt-2 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 sm:mt-0"
+          >
+            <MapPin className="h-4 w-4" />
+            Find nearest agrovets
+          </button>
+        )}
       </div>
 
       <div className="mt-4">
