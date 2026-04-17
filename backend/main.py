@@ -61,7 +61,12 @@ origins = _load_cors_origins()
 
 app.add_middleware(
     CORSMiddleware,
+    # If you are developing from varying hosts/ports (e.g. Vite on LAN IP),
+    # set `CORS_ALLOW_ORIGIN_REGEX` to avoid CORS preflight 400s.
+    # Example:
+    #   CORS_ALLOW_ORIGIN_REGEX="^https?://(localhost|127\\.0\\.0\\.1|192\\.168\\.\\d+\\.\\d+)(:\\d+)?$"
     allow_origins=origins,
+    allow_origin_regex=os.getenv("CORS_ALLOW_ORIGIN_REGEX") or None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
