@@ -56,6 +56,7 @@ export default function ImageUpload({ onResult }) {
     try {
       const res = await api.post("/predict", formData, {
         // Let the browser/axios set the correct multipart boundary header.
+        skipGlobalErrorHandler: true,
       });
       toast.dismiss(toastId);
       toast.success("Disease detected successfully!");
@@ -69,6 +70,13 @@ export default function ImageUpload({ onResult }) {
         let message = "Failed to analyze image.";
         if (typeof detail === "string") {
           message = detail;
+        } else if (Array.isArray(detail)) {
+          message = detail
+            .map((d) => {
+              const field = Array.isArray(d?.loc) ? d.loc.join(".") : "field";
+              return `${field}: ${d?.msg || "Invalid value"}`;
+            })
+            .join(", ");
         } else if (detail && typeof detail === "object" && detail.message) {
           message = detail.message;
         } else if (err.message) {
