@@ -30,6 +30,9 @@ services:
       JWT_EXPIRE_HOURS: "24"
       PRED_CONF_THRESHOLD: "60"
       JWT_SECRET_KEY: "change-me-in-production"
+      # Dev-friendly CORS: allow localhost + common private LAN ranges on any port.
+      # This prevents OPTIONS preflight 400 when you access frontend via a different host/port.
+      CORS_ALLOW_ORIGIN_REGEX: "^https?://(localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0|10\\.\\d+\\.\\d+\\.\\d+|192\\.168\\.\\d+\\.\\d+|172\\.(1[6-9]|2\\d|3[0-1])\\.\\d+\\.\\d+)(:\\d+)?$"
     volumes:
       - ./backend:/app/backend
     depends_on:
@@ -49,7 +52,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "80:80"
+      - "3000:80"
 
 volumes:
   db_data:
