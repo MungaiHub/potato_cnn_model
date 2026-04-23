@@ -2,13 +2,12 @@ import axios from "axios";
 import toast from "react-hot-toast";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+  // Prefer same-origin proxy when configured (Docker/Nginx or Vite proxy).
+  // Fallback to IPv4 loopback to avoid localhost->IPv6 (::1) issues on some Docker setups.
+  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 api.interceptors.request.use(
@@ -16,6 +15,10 @@ api.interceptors.request.use(
     const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // For FormData uploads, let the browser set multipart boundary automatically.
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
     }
     return config;
   },
@@ -25,6 +28,9 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.config?.skipGlobalErrorHandler) {
+      return Promise.reject(error);
+    }
     if (error.response?.status === 401) {
       toast.error("Session expired. Please login again.");
       localStorage.removeItem("token");
