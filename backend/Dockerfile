@@ -9,7 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+ENV PIP_DEFAULT_TIMEOUT=300
+RUN pip install --no-cache-dir --retries 10 --timeout 300 -r requirements.txt
 
 # Copy backend source code into a proper python package folder.
 # Your code imports from `backend.*`, so `backend/` must exist in the container.
