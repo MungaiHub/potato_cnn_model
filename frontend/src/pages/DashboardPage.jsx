@@ -13,7 +13,6 @@ export default function DashboardPage() {
         stopGps();
       } else {
         startGps();
-        setGpsEnabled(true);
       }
     };
   const [result, setResult] = useState(null);
@@ -103,18 +102,60 @@ export default function DashboardPage() {
       return;
     }
 
-    // Get an immediate fix, then keep tracking.
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setLastCoords({ latitude, longitude });
-        fetchNearestAgrovets(latitude, longitude);
-      },
-      () => {
-        toast.error("Unable to get your location. Please enable GPS permission.");
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
-    )
+    // Geolocation requires a secure context (HTTPS) except for localhost.
+    // If you're visiting via http://<LAN-IP>/, the browser may never prompt.
+    if (!window.isSecureContext) {
+      toast.error(
+        "GPS needs HTTPS (or localhost). Open the site on localhost or use HTTPS, then try again.",
+      );
+      return;
+    }
+
+    const requestPosition = () => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setLastCoords({ latitude, longitude });
+          setGpsEnabled(true);
+          fetchNearestAgrovets(latitude, longitude);
+        },
+        (err) => {
+          // Provide a more actionable message than a generic "enable permission".
+          if (err?.code === 1) {
+            toast.error(
+              "Location permission blocked. Click the site lock icon in the address bar → Site settings → Location → Allow, then retry.",
+            );
+          } else if (err?.code === 2) {
+            toast.error("Position unavailable. Turn on Location/GPS and try again.");
+          } else if (err?.code === 3) {
+            toast.error("GPS timed out. Please try again (or move to a better signal).");
+          } else {
+            toast.error(err?.message || "Unable to get your location.");
+          }
+          setGpsEnabled(false);
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
+      );
+    };
+
+    // If the Permissions API is available, surface "denied" immediately.
+    if (navigator.permissions?.query) {
+      navigator.permissions
+        .query({ name: "geolocation" })
+        .then((status) => {
+          if (status.state === "denied") {
+            toast.error(
+              "Location permission is currently blocked for this site. Allow it in browser site settings, then retry.",
+            );
+            setGpsEnabled(false);
+            return;
+          }
+          requestPosition();
+        })
+        .catch(() => requestPosition());
+    } else {
+      requestPosition();
+    }
   };
 
   return (
