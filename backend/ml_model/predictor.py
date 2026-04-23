@@ -17,10 +17,12 @@ CLASS_INDICES_PATH = BASE_DIR / "class_indices.json"
 
 model = None
 
-# confidence threshold (%) below which predictions are considered "unidentified"
+# confidence threshold (%) previously used to reject predictions as "unidentified".
+# In practice this caused many real tuber photos (healthy/soft rot/brown rot) to be
+# incorrectly rejected due to lower confidence. We keep it for optional UI/ops
+# use, but do not reject solely based on confidence by default.
 CONFIDENCE_THRESHOLD = float(os.getenv("PRED_CONF_THRESHOLD", "60"))
-# If an image looks unlike a potato leaf/tuber, cap confidence below this value.
-NON_POTATO_CONFIDENCE_CAP = float(os.getenv("NON_POTATO_CONF_CAP", "49"))
+REJECT_LOW_CONFIDENCE = os.getenv("REJECT_LOW_CONFIDENCE", "false").lower() in {"1", "true", "yes"}
 
 
 def load_model():
@@ -98,20 +100,9 @@ def predict_disease(image_path: str) -> Dict[str, Any]:
 
     disease_name = class_indices.get(str(class_idx), "Unknown")
 
-    # Rejection guards (best-effort without retraining):
-    # Closed-set softmax can be overconfident on out-of-domain inputs (faces/body/etc).
-    # These guards force such inputs to "Unidentified image" with capped confidence.
-    if _looks_like_skin(image_path) or _looks_non_potato_image(image_path):
-        return {
-            "disease": "Unidentified image",
-            "confidence": round(min(confidence, NON_POTATO_CONFIDENCE_CAP), 2),
-            "image_type": "unknown",
-            "normalized_disease_key": "unidentified",
-        }
-
-    # If the model returned an unknown class or confidence is below threshold,
-    # treat as unidentified.
-    if disease_name == "Unknown" or confidence < CONFIDENCE_THRESHOLD:
+    # If the model returned an unknown class, treat as unidentified.
+    # Optionally reject low-confidence predictions when explicitly enabled.
+    if disease_name == "Unknown" or (REJECT_LOW_CONFIDENCE and confidence < CONFIDENCE_THRESHOLD):
         return {
             "disease": "Unidentified image",
             "confidence": round(confidence, 2),
@@ -133,65 +124,14 @@ def predict_disease(image_path: str) -> Dict[str, Any]:
     else:
         image_type = "tuber"
 
-    return {
+    out: Dict[str, Any] = {
         "disease": disease_name,
         "confidence": round(confidence, 2),
         "image_type": image_type,
         "normalized_disease_key": normalized,
     }
-
-
-def _looks_non_potato_image(image_path: str) -> bool:
-    """Heuristic rejection for obvious non-potato images.
-
-    This is not a replacement for training a non-potato class, but it reduces
-    overconfident false positives (e.g., face photos) in demos.
-    """
-    img = Image.open(image_path).convert("RGB").resize((224, 224))
-    arr = np.array(img).astype(np.float32)
-    r = arr[:, :, 0]
-    g = arr[:, :, 1]
-    b = arr[:, :, 2]
-
-    # Green-ish pixels common in leaf imagery.
-    green_mask = (g > r + 8) & (g > b + 8) & (g > 45)
-    # Brown-ish pixels common in tubers/soil backgrounds.
-    brown_mask = (r > g + 10) & (g > b + 5) & (r > 55) & (b < 130)
-
-    green_ratio = float(np.mean(green_mask))
-    brown_ratio = float(np.mean(brown_mask))
-    potato_like_ratio = green_ratio + brown_ratio
-
-    # Below this, image is likely unrelated to potato leaf/tuber content.
-    # Using a higher threshold reduces false accepts (faces with green backgrounds).
-    return potato_like_ratio < 0.22
-
-
-def _looks_like_skin(image_path: str) -> bool:
-    """Detect likely skin-tone dominance (faces/body parts).
-
-    Uses a simple YCbCr rule of thumb (not perfect, but effective for demos).
-    """
-    img = Image.open(image_path).convert("RGB").resize((224, 224))
-    arr = np.array(img).astype(np.float32)
-    r = arr[:, :, 0]
-    g = arr[:, :, 1]
-    b = arr[:, :, 2]
-
-    # Convert RGB -> YCbCr (approx; ranges follow ITU-R BT.601)
-    y = 0.299 * r + 0.587 * g + 0.114 * b
-    cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b
-    cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b
-
-    # Common skin cluster (broad) + avoid very dark pixels.
-    skin_mask = (
-        (y > 40)
-        & (cb >= 77)
-        & (cb <= 127)
-        & (cr >= 133)
-        & (cr <= 173)
-    )
-
-    skin_ratio = float(np.mean(skin_mask))
-    return skin_ratio > 0.18
+    # Preserve the low-confidence signal without rejecting the prediction.
+    if confidence < CONFIDENCE_THRESHOLD:
+        out["low_confidence"] = True
+    return out
 
